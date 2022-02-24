@@ -251,7 +251,6 @@ void processCrossfireTelemetryFrame(){
             Serial.println("ALTITUDE");
          }
         processCrossfireTelemetryValue(GPS_ALTITUDE_INDEX,  value - 1000);
-
       }  
       if (getCrossfireTelemetryValue<1>(17, value)){
          if(crossfireDebug == 1){
@@ -259,6 +258,8 @@ void processCrossfireTelemetryFrame(){
          }
           processCrossfireTelemetryValue(GPS_SATELLITES_INDEX, value);
       }  
+
+      
       break;
 
     case BATTERY_ID:

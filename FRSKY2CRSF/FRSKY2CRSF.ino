@@ -1,3 +1,5 @@
+
+
 /*
   Copyright (C) Rob Thomson
  
@@ -55,8 +57,37 @@
 #include <inttypes.h>
 #include "sbus.h"
 
+
+#include "FrSkySportSensor.h"
+#include "FrSkySportSensorAss.h"
+#include "FrSkySportSensorEsc.h"
+#include "FrSkySportSensorFcs.h"
+#include "FrSkySportSensorFlvss.h"
+#include "FrSkySportSensorGasSuite.h"
+#include "FrSkySportSensorGps.h"
+#include "FrSkySportSensorRpm.h"
+#include "FrSkySportSensorSp2uart.h"
+#include "FrSkySportSensorVario.h"
+#include "FrSkySportSingleWireSerial.h"
+#include "FrSkySportTelemetry.h"
+
+
 bfs::SbusRx sbus_rx(&Serial2);
 std::array<int16_t, bfs::SbusRx::NUM_CH()> sbus_data;
+
+//frsky sensors
+FrSkySportSensorAss ass;                               // Create ASS sensor with default ID
+FrSkySportSensorEsc esc;                               // Create ESC sensor with default ID
+FrSkySportSensorFcs fcs;                               // Create FCS-40A sensor with default ID (use ID8 for FCS-150A)
+FrSkySportSensorFlvss flvss1;                          // Create FLVSS sensor with default ID
+FrSkySportSensorFlvss flvss2(FrSkySportSensor::ID15);  // Create FLVSS sensor with given ID
+FrSkySportSensorGasSuite gas;                          // Create Gas Suite sensor with default ID
+FrSkySportSensorGps gps;                               // Create GPS sensor with default ID
+FrSkySportSensorRpm rpm;                               // Create RPM sensor with default ID
+FrSkySportSensorSp2uart sp2uart;                       // Create SP2UART Type B sensor with default ID
+FrSkySportSensorVario vario;                           // Create Variometer sensor with default ID
+FrSkySportTelemetry telemetry;                                 // Create telemetry object without polling
+
 
 //bring in all externals related to crossfire
 extern uint32_t crossfireChannels[CROSSFIRE_CHANNELS_COUNT];  //pulses data
@@ -84,6 +115,9 @@ extern uint32_t sensorTXRSSI;
 extern uint32_t sensorTXQly;
 extern uint32_t sensorTXSNR;
 extern uint32_t sensorCapacity;
+
+
+
 
 enum
 {
@@ -124,11 +158,14 @@ void setup()
 
   startCrossfire();
 
-  //start s.port
-  
+
+      
   //start s.bus
   sbus_rx.Begin();  
 
+  //telemetry.begin(FrSkySportSingleWireSerial::SERIAL_3, &ass, &esc, &fcs, &flvss1, &flvss2, &gas, &gps, &rpm, &sp2uart, &vario);
+
+telemetry.begin(FrSkySportSingleWireSerial::SERIAL_3, &ass, &gps, &vario, &fcs);
 }
 
 
@@ -138,65 +175,43 @@ void loop()
 
 
     if (sbus_rx.Read()) {
-    /* Grab the received data */
-    sbus_data = sbus_rx.ch();
-    /* Display the received data */
-
-    for (int8_t i = 0; i < bfs::SbusRx::NUM_CH(); i++) {
-
-    Serial.print(sbus_data[1]);
-    Serial.print("\n");
-    
-       crossfireChannels[i] =  map(sbus_data[i],SBUS_LOW,SBUS_HIGH,CROSSFIRE_LOW,CROSSFIRE_HIGH);
-    //  Serial.print(sbus_data[i]);
-    //  Serial.print("\t");
+      /* Grab the received data */
+      sbus_data = sbus_rx.ch();
+      /* Display the received data */
+  
+      for (int8_t i = 0; i < bfs::SbusRx::NUM_CH(); i++) { 
+         crossfireChannels[i] =  map(sbus_data[i],SBUS_LOW,SBUS_HIGH,CROSSFIRE_LOW,CROSSFIRE_HIGH);
+      }
     }
 
+  // Set GPS sensor data
+  gps.setData(sensorGPSLat, sensorGPSLong,  // Latitude and longitude in degrees decimal (positive for N/E, negative for S/W)
+              sensorAltitude,                // Altitude in m (can be negative)
+              sensorSpeed,                // Speed in m/s
+              sensorHeading,                // Course over ground in degrees (0-359, 0 = north)
+              0, 0, 0,            // Date (year - 2000, month, day)
+              00, 00, 00);          // Time (hour, minute, second) - will be affected by timezone setings in your radio
 
-  }
+  // Set airspeed sensor (ASS) data
+  ass.setData((sensorSpeed)*0.036);  // Airspeed in km/h
+
+  // Set variometer data
+  // (set Variometer source to VSpd in menu to use the vertical speed data from this sensor for variometer).
+  vario.setData(sensorAltitude,  // Altitude in meters (can be negative)
+                sensorVario);  // Vertical speed in m/s (positive - up, negative - down)
 
 
-
-  /*
-   //run sbus telemetry and pulses
-   if ( exBus.HasNewChannelData() )
-  {
-    int i;
-    for (i = 0; i < exBus.GetNumChannels(); i++)
-    {
-   
-        crossfireChannels[i] =  map(exBus.GetChannel(i),EXBUS_LOW,EXBUS_HIGH,CROSSFIRE_LOW,CROSSFIRE_HIGH);
-    }
-  }
+  // Set current/voltage sensor (FCS) data
+  // (set Voltage source to FAS in menu to use this data for battery voltage,
+  //  set Current source to FAS in menu to use this data for current readins)
+  fcs.setData((sensorCurrent)/10,   // Current consumption in amps
+              (sensorVoltage)/10);  // Battery voltage in volts
 
 
-   exBus.SetSensorValueGPS(ID_GPSLAT, false, sensorGPSLat); 
-   exBus.SetSensorValueGPS(ID_GPSLON, true, sensorGPSLong); 
-   exBus.SetSensorValue(ID_VAL11, sensorSpeed);
-   exBus.SetSensorValue(ID_VAL12, sensorAltitude);
-   exBus.SetSensorValue(ID_VAL13, sensorSats); 
-   exBus.SetSensorValue(ID_VAL14, sensorPitch);  
-   exBus.SetSensorValue(ID_VAL15, sensorRoll);  
-   exBus.SetSensorValue(ID_VAL16, sensorYaw);    
-   exBus.SetSensorValue(ID_VAL17, sensorHeading);    
-   exBus.SetSensorValue(ID_VAL18, sensorVoltage);
-   exBus.SetSensorValue(ID_VAL19, sensorCurrent);
-   exBus.SetSensorValue(ID_VAL20, sensorFuel);  
-   exBus.SetSensorValue(ID_VAL21, sensorVario);  
-   
-   exBus.SetSensorValue(ID_VAL22, sensor1RSS);    
-   exBus.SetSensorValue(ID_VAL23, sensor2RSS);   
-   exBus.SetSensorValue(ID_VAL24, sensorRXQly);  
-   exBus.SetSensorValue(ID_VAL25, sensorRXSNR);     
-   exBus.SetSensorValue(ID_VAL26, sensorAntenna);   
-   exBus.SetSensorValue(ID_VAL27, sensorRFMode); 
-   exBus.SetSensorValue(ID_VAL28, sensorTXPWR); 
-   exBus.SetSensorValue(ID_VAL29, sensorTXRSSI); 
-   exBus.SetSensorValue(ID_VAL30, sensorTXQly); 
-   exBus.SetSensorValue(ID_VAL31, sensorTXSNR);   
-   exBus.SetSensorValue(ID_VAL32, sensorCapacity);             
-   exBus.DoJetiExBus();
-*/
+  
+  telemetry.send();
+
+
 
 
 }

@@ -18,13 +18,13 @@
  * GNU General Public License for more details.
  */
 
-#define XFIRE_DEBUG                       0; 
+#define XFIRE_DEBUG                       1; 
 
-//#define REFRESH_INTERVAL 4  
+//#define REFRESH_INTERVAL 16 
 //#define CROSSFIRE_BAUD_RATE 115200 
 
 // high speed mode working!!!!.
-#define REFRESH_INTERVAL 4    
+#define REFRESH_INTERVAL 4   
 #define CROSSFIRE_BAUD_RATE 400000
 
 
