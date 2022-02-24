@@ -1,0 +1,202 @@
+/*
+  Copyright (C) Rob Thomson
+ 
+  Based on code named fromn the opentx project
+    th9x - http://code.google.com/p/th9x
+    er9x - http://code.google.com/p/er9x
+    gruvin9x - http://code.google.com/p/gruvin9x
+ 
+  License GPLv2: http://www.gnu.org/licenses/gpl-2.0.html
+ 
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License version 2 as
+  published by the Free Software Foundation.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  Jeti  EX Bus C++ Library for Teensy 3.x
+  -------------------------------------------------------------------
+  
+  Copyright (C) 2018 Bernd Wokoeck
+  
+  Version history:
+  0.90   02/04/2018  created
+  0.91   02/09/2018  Support for AtMega32u4 added
+  0.92   02/14/2018  Support for ESP32 added
+  0.93   02/16/2018  ESP32 uart initialization changed
+  0.94   02/17/2018  Generic arduino HardwareSerial support for AtMega328PB
+  0.95   03/17/2018  Synchronization (IsBusReleased) for time consuming operations
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the "Software"),
+  to deal in the Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+  IN THE SOFTWARE.
+**************************************************************/
+
+ 
+
+#include <stdint.h> 
+#include "xfire.h"
+#include <limits.h>
+#include "RTClib.h"
+#include <Time.h>
+#include <inttypes.h>
+#include "sbus.h"
+
+bfs::SbusRx sbus_rx(&Serial2);
+std::array<int16_t, bfs::SbusRx::NUM_CH()> sbus_data;
+
+//bring in all externals related to crossfire
+extern uint32_t crossfireChannels[CROSSFIRE_CHANNELS_COUNT];  //pulses data
+extern float sensorVario;
+extern double sensorGPSLat;
+extern double sensorGPSLong;
+extern float sensorAltitude;
+extern float sensorHeading;
+extern uint32_t sensorSpeed;
+extern uint32_t sensorSats;
+extern float sensorPitch;
+extern float sensorRoll;
+extern float sensorYaw;
+extern double sensorVoltage;
+extern double sensorCurrent;
+extern double sensorFuel;
+extern uint32_t  sensor1RSS;
+extern uint32_t sensor2RSS;
+extern uint32_t sensorRXQly;
+extern uint32_t sensorRXSNR; 
+extern uint32_t sensorAntenna; 
+extern uint32_t sensorRFMode;
+extern uint32_t sensorTXPWR;
+extern uint32_t sensorTXRSSI; 
+extern uint32_t sensorTXQly;
+extern uint32_t sensorTXSNR;
+extern uint32_t sensorCapacity;
+
+enum
+{
+	ID_GPSLON=1,
+	ID_GPSLAT,
+	ID_VAL11, 
+	ID_VAL12, 
+	ID_VAL13, 
+	ID_VAL14, 
+	ID_VAL15, 
+	ID_VAL16, 
+	ID_VAL17, 
+	ID_VAL18, 
+	ID_VAL19, 
+	ID_VAL20, 
+  ID_VAL32,  //meant to be here  
+	ID_VAL21, 
+	ID_VAL22,
+	ID_VAL23,
+	ID_VAL24,
+  ID_VAL25,
+  ID_VAL26,
+  ID_VAL27,
+  ID_VAL28,
+  ID_VAL29,
+  ID_VAL30,
+  ID_VAL31
+
+};
+
+
+
+
+
+void setup()
+{
+  Serial.begin(9600);
+
+  startCrossfire();
+
+  //start s.port
+  
+  //start s.bus
+  sbus_rx.Begin();  
+
+}
+
+
+void loop()
+{
+
+
+
+    if (sbus_rx.Read()) {
+    /* Grab the received data */
+    sbus_data = sbus_rx.ch();
+    /* Display the received data */
+
+    for (int8_t i = 0; i < bfs::SbusRx::NUM_CH(); i++) {
+
+    Serial.print(sbus_data[1]);
+    Serial.print("\n");
+    
+       crossfireChannels[i] =  map(sbus_data[i],SBUS_LOW,SBUS_HIGH,CROSSFIRE_LOW,CROSSFIRE_HIGH);
+    //  Serial.print(sbus_data[i]);
+    //  Serial.print("\t");
+    }
+
+
+  }
+
+
+
+  /*
+   //run sbus telemetry and pulses
+   if ( exBus.HasNewChannelData() )
+  {
+    int i;
+    for (i = 0; i < exBus.GetNumChannels(); i++)
+    {
+   
+        crossfireChannels[i] =  map(exBus.GetChannel(i),EXBUS_LOW,EXBUS_HIGH,CROSSFIRE_LOW,CROSSFIRE_HIGH);
+    }
+  }
+
+
+   exBus.SetSensorValueGPS(ID_GPSLAT, false, sensorGPSLat); 
+   exBus.SetSensorValueGPS(ID_GPSLON, true, sensorGPSLong); 
+   exBus.SetSensorValue(ID_VAL11, sensorSpeed);
+   exBus.SetSensorValue(ID_VAL12, sensorAltitude);
+   exBus.SetSensorValue(ID_VAL13, sensorSats); 
+   exBus.SetSensorValue(ID_VAL14, sensorPitch);  
+   exBus.SetSensorValue(ID_VAL15, sensorRoll);  
+   exBus.SetSensorValue(ID_VAL16, sensorYaw);    
+   exBus.SetSensorValue(ID_VAL17, sensorHeading);    
+   exBus.SetSensorValue(ID_VAL18, sensorVoltage);
+   exBus.SetSensorValue(ID_VAL19, sensorCurrent);
+   exBus.SetSensorValue(ID_VAL20, sensorFuel);  
+   exBus.SetSensorValue(ID_VAL21, sensorVario);  
+   
+   exBus.SetSensorValue(ID_VAL22, sensor1RSS);    
+   exBus.SetSensorValue(ID_VAL23, sensor2RSS);   
+   exBus.SetSensorValue(ID_VAL24, sensorRXQly);  
+   exBus.SetSensorValue(ID_VAL25, sensorRXSNR);     
+   exBus.SetSensorValue(ID_VAL26, sensorAntenna);   
+   exBus.SetSensorValue(ID_VAL27, sensorRFMode); 
+   exBus.SetSensorValue(ID_VAL28, sensorTXPWR); 
+   exBus.SetSensorValue(ID_VAL29, sensorTXRSSI); 
+   exBus.SetSensorValue(ID_VAL30, sensorTXQly); 
+   exBus.SetSensorValue(ID_VAL31, sensorTXSNR);   
+   exBus.SetSensorValue(ID_VAL32, sensorCapacity);             
+   exBus.DoJetiExBus();
+*/
+
+
+}
