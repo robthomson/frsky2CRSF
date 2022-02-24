@@ -1,4 +1,4 @@
-The Exbus 2 CSRF Telemety convertor acta as a bridge between jeti and crossfire.
+The frsky CSRF Telemety convertor acta as a bridge between frsky and crossfire.
 
 Build is relatively simple.
 
@@ -23,13 +23,9 @@ This can be fouund in two locations.
 * An example of this can be found here:
 * https://oscarliang.com/ctt/uploads/2016/05/flash-frsky-rx-firmware-Taranis_module_bay.jpg
 
-Connect pin 9 on the teensy to the exbus signal on either the transmitter or the jeti receiver.
+Connect pin 9 on the teensy to the sbus signal on  the frsky receiver.
+Connect pin 8 on the teensy to the s.port signal on the frsky receiver.
 
-* If using a jeti receiver you will use an E1 or E2 port for this function.
-* You will need to access the receiver configuration and tell the receiver to output ExBUS.
-*
-* It is technically also possible to set the internal PPM port on the jeti radio to output exbus.
-* I have not testest this - but it should work.
 
 Ensure you have supplied power to the devices and a suitable GND connection is shared.
 
